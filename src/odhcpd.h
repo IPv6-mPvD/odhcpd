@@ -169,6 +169,16 @@ struct interface {
 	size_t upstream_len;
 
 	char *filter_class;
+
+	//PVD
+	char *pvd_id;
+	bool pvd_http;
+	bool pvd_legacy;
+	unsigned short pvd_sequence;
+
+	//PIO filter
+	uint8_t pio_filter_length;
+	struct in6_addr pio_filter_addr;
 };
 
 extern struct list_head interfaces;
