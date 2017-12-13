@@ -223,6 +223,11 @@ struct interface {
 	uint32_t ra_retranstime;
 	uint32_t ra_hoplimit;
 	int ra_mtu;
+	void *ra_pvd_id_data;
+	int ra_pvd_id_len;
+	bool ra_pvd_http;
+	bool ra_pvd_legacy;
+	unsigned short ra_pvd_sequence;
 
 	// DHCPv4
 	struct in_addr dhcpv4_start;

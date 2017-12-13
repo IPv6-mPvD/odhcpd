@@ -63,6 +63,10 @@ enum {
 	IFACE_ATTR_NDPROXY_ROUTING,
 	IFACE_ATTR_NDPROXY_SLAVE,
 	IFACE_ATTR_PREFIX_FILTER,
+	IFACE_ATTR_PVD_ID,
+	IFACE_ATTR_PVD_HTTP,
+	IFACE_ATTR_PVD_LEGACY,
+	IFACE_ATTR_PVD_SEQUENCE,
 	IFACE_ATTR_MAX
 };
 
@@ -106,6 +110,10 @@ static const struct blobmsg_policy iface_attrs[IFACE_ATTR_MAX] = {
 	[IFACE_ATTR_NDPROXY_ROUTING] = { .name = "ndproxy_routing", .type = BLOBMSG_TYPE_BOOL },
 	[IFACE_ATTR_NDPROXY_SLAVE] = { .name = "ndproxy_slave", .type = BLOBMSG_TYPE_BOOL },
 	[IFACE_ATTR_PREFIX_FILTER] = { .name = "prefix_filter", .type = BLOBMSG_TYPE_STRING },
+	[IFACE_ATTR_PVD_ID] = { .name = "pvd_id", .type = BLOBMSG_TYPE_STRING },
+	[IFACE_ATTR_PVD_HTTP] = { .name = "pvd_http", .type = BLOBMSG_TYPE_BOOL },
+	[IFACE_ATTR_PVD_LEGACY] = { .name = "pvd_legacy", .type = BLOBMSG_TYPE_BOOL },
+	[IFACE_ATTR_PVD_SEQUENCE] = { .name = "pvd_sequence", .type = BLOBMSG_TYPE_INT16 },
 };
 
 static const struct uci_blob_param_info iface_attr_info[IFACE_ATTR_MAX] = {
@@ -229,6 +237,7 @@ static void clean_interface(struct interface *iface)
 	free(iface->dhcpv4_dns);
 	free(iface->dhcpv6_raw);
 	free(iface->filter_class);
+	free(iface->ra_pvd_id_data);
 	memset(&iface->ra, 0, sizeof(*iface) - offsetof(struct interface, ra));
 	set_interface_defaults(iface);
 }
@@ -738,6 +747,36 @@ int config_parse_interface(void *data, size_t len, const char *name, bool overwr
 		if (astr)
 			free(astr);
 	}
+
+	if ((c = tb[IFACE_ATTR_PVD_ID])) {
+		uint8_t buf[256];
+		char *pvdidstr = blobmsg_get_string(c);
+		size_t pvdidlen = strlen(pvdidstr);
+
+		if (iface->ra_pvd_id_data != NULL)
+			goto err;
+
+		if (pvdidlen > 0 && pvdidstr[pvdidlen - 1] == '.')
+			pvdidstr[pvdidlen - 1] = 0;
+
+		if ((len = dn_comp(pvdidstr, buf, sizeof(buf), NULL, NULL)) <= 1)
+			goto err;
+
+		if ((iface->ra_pvd_id_data = malloc(len)) == NULL)
+			goto err;
+
+		iface->ra_pvd_id_len = len;
+		memcpy(iface->ra_pvd_id_data, buf, iface->ra_pvd_id_len);
+	}
+
+	if ((c = tb[IFACE_ATTR_PVD_HTTP]))
+		iface->ra_pvd_http = blobmsg_get_bool(c);
+
+	if ((c = tb[IFACE_ATTR_PVD_LEGACY]))
+		iface->ra_pvd_legacy = blobmsg_get_bool(c);
+
+	if ((c = tb[IFACE_ATTR_PVD_SEQUENCE]))
+		iface->ra_pvd_sequence = blobmsg_get_u16(c);
 
 	return 0;
 
