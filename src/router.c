@@ -283,6 +283,7 @@ enum {
 	IOV_RA_DNS_ADDR,
 	IOV_RA_SEARCH,
 	IOV_RA_ADV_INTERVAL,
+	IOV_RA_PVDID,
 	IOV_RA_TOTAL,
 };
 
@@ -559,6 +560,23 @@ static uint64_t send_router_advert(struct interface *iface, const struct in6_add
 	search->lifetime = htonl(maxival*10);
 	dns.lifetime = search->lifetime;
 
+	// PVD Option
+	struct {
+		uint8_t type;
+		uint8_t len;
+		uint16_t flags;
+		uint16_t sequence;
+		char id[1024];
+	} pvd = { .type = 254 };
+
+	if (iface->ra_pvd_id_data != NULL &&
+			strlen(iface->ra_pvd_id_data) < 1024) {
+		memcpy(pvd.id, iface->ra_pvd_id_data, iface->ra_pvd_id_len);
+		pvd.flags = htons((iface->ra_pvd_http << 15) | (iface->ra_pvd_legacy << 14));
+		pvd.len = (6 + iface->ra_pvd_id_len - 1) / 8 + 1;
+		pvd.sequence = htons(iface->ra_pvd_sequence);
+	}
+
 	struct icmpv6_opt adv_interval = {
 		.type = ND_OPT_RTR_ADV_INTERVAL,
 		.len = 1,
@@ -572,6 +590,7 @@ static uint64_t send_router_advert(struct interface *iface, const struct in6_add
 			[IOV_RA_DNS] = {&dns, (dns_cnt) ? sizeof(dns) : 0},
 			[IOV_RA_DNS_ADDR] = {dns_addr, dns_cnt * sizeof(*dns_addr)},
 			[IOV_RA_SEARCH] = {search, search->len * 8},
+			[IOV_RA_PVDID] = {&pvd, pvd.len * 8},
 			[IOV_RA_ADV_INTERVAL] = {&adv_interval, adv_interval.len * 8}};
 	struct sockaddr_in6 dest = {AF_INET6, 0, 0, ALL_IPV6_NODES, 0};
 
